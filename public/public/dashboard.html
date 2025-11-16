@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MyLink ZeroApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f8f9fa; text-align: center; }
+    h1 { color: #007bff; }
+    input { padding: 12px; width: 280px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; margin: 10px; }
+    button { padding: 12px 24px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    #status { margin: 15px 0; padding: 10px; font-weight: bold; min-height: 20px; }
+    video { width: 100%; max-width: 600px; border: 2px solid #333; border-radius: 8px; background: #000; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>MyLink ZeroApp</h1>
+  <p>Enter your email to control your phone</p>
+  <input id="email" placeholder="emmanuelwamb107@gmail.com" />
+  <button onclick="sendLink()">Send Link</button>
+  <div id="status"></div>
+  <h3>Phone Screen</h3>
+  <video id="remote" autoplay controls></video>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const pc = new RTCPeerConnection();
+
+    socket.on('offer', offer => {
+      pc.setRemoteDescription(offer);
+      pc.createAnswer().then(answer => {
+        pc.setLocalDescription(answer);
+        socket.emit('answer', answer);
+      });
+    });
+
+    pc.ontrack = e => {
+      document.getElementById('remote').srcObject = e.streams[0];
+    };
+
+    function sendLink() {
+      const email = document.getElementById('email').value.trim();
+      if (!email) {
+        document.getElementById('status').innerHTML = '<p style="color:red;">Enter your email</p>';
+        return;
+      }
+      document.getElementById('status').innerHTML = '<p style="color:blue;">Sending link...</p>';
+      fetch('/link?email=' + encodeURIComponent(email))
+        .then(r => r.text())
+        .then(msg => {
+          document.getElementById('status').innerHTML = '<p style="color:green;">' + msg + '</p>';
+        })
+        .catch(err => {
+          document.getElementById('status').innerHTML = '<p style="color:red;">Error: ' + err + '</p>';
+        });
+    }
+  </script>
+</body>
+</html>
