@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MyLink Control</title>
+  <style>
+    body{font-family:Arial;padding:20px;background:#f4f4f4}
+    input,button{padding:12px;margin:5px;font-size:16px;border-radius:8px;border:1px solid #ccc}
+    button{background:#007bff;color:white;cursor:pointer}
+    video{width:100%;max-width:600px;border:2px solid #333;border-radius:8px}
+    #status{margin:10px 0;padding:10px;background:#e7f3ff;border-radius:8px}
+  </style>
+</head>
+<body>
+  <h1>MyLink ZeroApp</h1>
+  <input id="email" placeholder="your@gmail.com">
+  <button onclick="send()">Send Link</button>
+  <div id="status"></div>
+  <h3>Phone Screen</h3>
+  <video id="remote" autoplay controls></video>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const pc = new RTCPeerConnection();
+    socket.on('offer', offer => {
+      pc.setRemoteDescription(offer);
+      pc.createAnswer().then(answer => {
+        pc.setLocalDescription(answer);
+        socket.emit('answer', answer);
+      });
+    });
+    pc.ontrack = e => document.getElementById('remote').srcObject = e.streams[0];
+    function send() {
+      const email = document.getElementById('email').value;
+      if (!email) return alert('Enter email');
+      fetch('/link?email=' + email)
+        .then(r => r.text())
+        .then(m => document.getElementById('status').innerHTML = m);
+    }
+  </script>
+</body>
+</html>
