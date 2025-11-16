@@ -12,17 +12,25 @@
     });
   });
 
-  // Display phone screen
+  // Show phone screen on laptop
   pc.ontrack = e => {
     document.getElementById('remote').srcObject = e.streams[0];
   };
 
-  // Send magic link
+  // SEND EMAIL LINK
   function sendLink() {
     const email = document.getElementById('email').value;
-    if (!email) return alert('Enter your email');
+    if (!email) {
+      alert('Please enter your email');
+      return;
+    }
     fetch('/link?email=' + encodeURIComponent(email))
       .then(r => r.text())
-      .then(msg => document.getElementById('status').innerHTML = msg);
+      .then(msg => {
+        document.getElementById('status').innerHTML = '<p style="color:green;">' + msg + '</p>';
+      })
+      .catch(err => {
+        document.getElementById('status').innerHTML = '<p style="color:red;">Error: ' + err + '</p>';
+      });
   }
 </script>
