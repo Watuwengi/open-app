@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Auto-Connecting...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 50px; background: #000; color: white; }
+    video { width: 100%; max-width: 600px; border: 2px solid #007bff; border-radius: 12px; }
+    button { padding: 16px 32px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 12px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h2>🔗 Auto-Connecting to Laptop...</h2>
+  <video id="local" autoplay muted></video>
+  <div id="manual"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const auto = urlParams.get('auto');
+
+    if (auto === '1') {
+      setTimeout(startSharing, 1500);
+    } else {
+      showManualButton();
+    }
+
+    function showManualButton() {
+      document.getElementById('manual').innerHTML = 
+        '<button onclick="startSharing()">Start Sharing Manually</button>';
+    }
+
+    function startSharing() {
+      navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+        .then(stream => {
+          document.getElementById('local').srcObject = stream;
+          const socket = io();
+          const pc = new RTCPeerConnection();
+          stream.getTracks().forEach(t => pc.addTrack(t, stream));
+          pc.createOffer().then(offer => {
+            pc.setLocalDescription(offer);
+            socket.emit('offer', offer);
+          });
+          socket.on('answer', a => pc.setRemoteDescription(a));
+          pc.onicecandidate = e => e.candidate && socket.emit('ice', e.candidate);
+        })
+        .catch(err => {
+          alert('Auto-share failed. Please allow screen sharing.');
+          showManualButton();
+        });
+    }
+  </script>
+</body>
+</html>
