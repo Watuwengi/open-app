@@ -1,0 +1,4 @@
+{
+  "build": { "builder": "paketo" },
+  "start": "bash start.sh"
+}
