@@ -1,36 +1,62 @@
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
-  const pc = new RTCPeerConnection();
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MyLink ZeroApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f8f9fa; }
+    h1 { color: #007bff; }
+    input { padding: 12px; width: 250px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; }
+    button { padding: 12px 20px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; margin-left: 10px; }
+    button:hover { background: #0056b3; }
+    #status { margin: 15px 0; padding: 10px; font-weight: bold; }
+    video { width: 100%; max-width: 600px; border: 2px solid #333; border-radius: 8px; background: #000; }
+  </style>
+</head>
+<body>
+  <h1>MyLink ZeroApp</h1>
+  <input id="email" placeholder="your@gmail.com" />
+  <button onclick="sendLink()">Send Link</button>
+  <div id="status"></div>
+  <h3>Phone Screen</h3>
+  <video id="remote" autoplay controls></video>
 
-  // Receive phone's screen offer
-  socket.on('offer', offer => {
-    pc.setRemoteDescription(offer);
-    pc.createAnswer().then(answer => {
-      pc.setLocalDescription(answer);
-      socket.emit('answer', answer);
-    });
-  });
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const pc = new RTCPeerConnection();
 
-  // Show phone screen on laptop
-  pc.ontrack = e => {
-    document.getElementById('remote').srcObject = e.streams[0];
-  };
-
-  // SEND EMAIL LINK
-  function sendLink() {
-    const email = document.getElementById('email').value;
-    if (!email) {
-      alert('Please enter your email');
-      return;
-    }
-    fetch('/link?email=' + encodeURIComponent(email))
-      .then(r => r.text())
-      .then(msg => {
-        document.getElementById('status').innerHTML = '<p style="color:green;">' + msg + '</p>';
-      })
-      .catch(err => {
-        document.getElementById('status').innerHTML = '<p style="color:red;">Error: ' + err + '</p>';
+    // Receive offer from phone
+    socket.on('offer', offer => {
+      pc.setRemoteDescription(offer);
+      pc.createAnswer().then(answer => {
+        pc.setLocalDescription(answer);
+        socket.emit('answer', answer);
       });
-  }
-</script>
+    });
+
+    // Show phone screen
+    pc.ontrack = e => {
+      document.getElementById('remote').srcObject = e.streams[0];
+    };
+
+    // Send magic link
+    function sendLink() {
+      const email = document.getElementById('email').value.trim();
+      if (!email) {
+        document.getElementById('status').innerHTML = '<p style="color:red;">Please enter your email</p>';
+        return;
+      }
+      document.getElementById('status').innerHTML = '<p style="color:blue;">Sending...</p>';
+      fetch('/link?email=' + encodeURIComponent(email))
+        .then(r => r.text())
+        .then(msg => {
+          document.getElementById('status').innerHTML = '<p style="color:green;">' + msg + '</p>';
+        })
+        .catch(err => {
+          document.getElementById('status').innerHTML = '<p style="color:red;">Error: ' + err + '</p>';
+        });
+    }
+  </script>
+</body>
+</html>
