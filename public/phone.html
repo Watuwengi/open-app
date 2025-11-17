@@ -6,48 +6,68 @@
   <style>
     body { font-family: sans-serif; text-align: center; padding: 50px; background: #000; color: white; }
     video { width: 100%; max-width: 600px; border: 2px solid #007bff; border-radius: 12px; }
-    button { padding: 16px 32px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 12px; margin-top: 20px; }
+    .btn { padding: 16px 32px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 12px; margin: 10px; cursor: pointer; }
+    .btn:hover { background: #0056b3; }
+    #status { margin: 15px 0; font-size: 16px; }
   </style>
 </head>
 <body>
-  <h2>🔗 Auto-Connecting to Laptop...</h2>
+  <h2>🔗 Connecting to Laptop...</h2>
   <video id="local" autoplay muted></video>
-  <div id="manual"></div>
+  <div id="status">Click below to share screen</div>
+  <button class="btn" onclick="startSharing()">START SHARING</button>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const auto = urlParams.get('auto');
-
-    if (auto === '1') {
-      setTimeout(startSharing, 1500);
-    } else {
-      showManualButton();
-    }
-
-    function showManualButton() {
-      document.getElementById('manual').innerHTML = 
-        '<button onclick="startSharing()">Start Sharing Manually</button>';
-    }
+    const socket = io();
+    let pc = null;
+    let stream = null;
 
     function startSharing() {
-      navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
-        .then(stream => {
-          document.getElementById('local').srcObject = stream;
-          const socket = io();
-          const pc = new RTCPeerConnection();
-          stream.getTracks().forEach(t => pc.addTrack(t, stream));
-          pc.createOffer().then(offer => {
-            pc.setLocalDescription(offer);
-            socket.emit('offer', offer);
-          });
-          socket.on('answer', a => pc.setRemoteDescription(a));
-          pc.onicecandidate = e => e.candidate && socket.emit('ice', e.candidate);
-        })
-        .catch(err => {
-          alert('Auto-share failed. Please allow screen sharing.');
-          showManualButton();
+      document.getElementById('status').innerHTML = 'Requesting screen...';
+      document.querySelector('button').disabled = true;
+
+      navigator.mediaDevices.getDisplayMedia({ 
+        video: { cursor: "always" }, 
+        audio: true 
+      })
+      .then(gotStream)
+      .catch(err => {
+        document.getElementById('status').innerHTML = 'Permission denied. Try again.';
+        document.querySelector('button').disabled = false;
+      });
+    }
+
+    function gotStream(mediaStream) {
+      stream = mediaStream;
+      const video = document.getElementById('local');
+      video.srcObject = stream;
+
+      pc = new RTCPeerConnection();
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      pc.createOffer()
+        .then(offer => {
+          pc.setLocalDescription(offer);
+          socket.emit('offer', offer);
         });
+
+      socket.on('answer', answer => {
+        pc.setRemoteDescription(answer);
+      });
+
+      pc.onicecandidate = e => {
+        if (e.candidate) socket.emit('ice', e.candidate);
+      };
+
+      document.getElementById('status').innerHTML = 'Connected! Sharing...';
+      document.querySelector('button').style.display = 'none';
+
+      // Stop sharing when user stops
+      stream.getVideoTracks()[0].addEventListener('ended', () => {
+        socket.disconnect();
+        document.getElementById('status').innerHTML = 'Sharing stopped.';
+      });
     }
   </script>
 </body>
